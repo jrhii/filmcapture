@@ -1,4 +1,4 @@
-//Film Scanner V08.05.20
+//Film Scanner V08.05.20a
 //Author: Jim Harter
 //Purpose: Control movie-film digitizer.  A take-up reel is powered by a stepper motor and a servo serves to acuate
 //  the shutter of a digital camera pointed at a frame.  Frame placement is controlled by a photo-resistor sensing
@@ -6,6 +6,7 @@
 //  while a sprocket counter function would allow for the proper advancement of 35mm film.  The Stepper and Servo
 //  driving functions utilize Timer1 and are non-blocking.  
 
+#include <Stepper.h>
 #include <TimerOne.h>
 bool isTimerOneOccupied = false;
 
@@ -28,74 +29,6 @@ const int SERVO_ANGLE = 45;//angle of servo swing
 
 unsigned long nextStepTime = 0;//minimum time to next step
 int nextStep = 0;//next step to execute in loop
-
-//STEPPER SECTION
-volatile int stepperLowPin;
-bool stepperIsDirectionForward;
-int stepperStepsPerRev = -1;
-int stepperRPM = -1;
-const int stepperPinLookup[4][4] = 
-{
-  {1,0,0,1},
-  {1,1,0,0},
-  {0,1,1,0},
-  {0,0,1,1}
-};
-
-void stepperStep() {
-  stepperLowPin = stepperIsDirectionForward ? stepperLowPin + 1: stepperLowPin -1;
-  stepperLowPin = stepperLowPin < 0 ? 3 : stepperLowPin;
-  stepperLowPin = stepperLowPin > 3 ? 0 : stepperLowPin;
-
-  for(int i = 0; i < 4; i++) {
-    digitalWrite(STEPPER_PIN_ARRAY[i], stepperPinLookup[stepperLowPin][i] == 1 ? LOW : HIGH);
-  }
-}//execute singleStep
-
-unsigned long stepperGetTimerOneDelay() {
-  if (stepperStepsPerRev > 0 && stepperRPM > 0) {
-    return 60000000/((unsigned long)stepperStepsPerRev * (unsigned long)stepperRPM);
-  } else {
-    return 5000;
-  }
-}
-
-void stepperSetup(const int pinArray[], int stepsPerRev = -1, int rpm = -1) {
-    stepperLowPin = 0;//this is from the private variables perspective
-    stepperIsDirectionForward = true;
-    stepperStepsPerRev = stepsPerRev;
-    stepperRPM = rpm;
-
-    for(int i = 0; i < 4; i++) {
-      pinMode(STEPPER_PIN_ARRAY[i],OUTPUT);
-      digitalWrite(STEPPER_PIN_ARRAY[i], HIGH);
-    }
-}
-
-void stepperRun(bool forward = true) {
-  if (isTimerOneOccupied) {
-    //throw 1;
-    return;
-  }
-  isTimerOneOccupied = true;
-  stepperIsDirectionForward = forward;
-  
-  Timer1.setPeriod(stepperGetTimerOneDelay());
-  Timer1.attachInterrupt(stepperStep); 
-  delay(0);//apparently needed
-  Timer1.start();
-}
-void stepperStop(){
-  Serial.println("stopping");
-  Timer1.stop();
-  Timer1.detachInterrupt();
-  isTimerOneOccupied = false;
-  nextStep = 1;
-}
-//END stepper section
-
-
-
 
 
 //START SERVO section
@@ -173,17 +106,20 @@ void serialEvent() {
   breakOut = true;  
 }
 
+Stepper takeupReel(STEPPER_STEPS, STEPPER_PIN_ARRAY[2],STEPPER_PIN_ARRAY[0],STEPPER_PIN_ARRAY[1],STEPPER_PIN_ARRAY[3]);
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Begin Prog");
   Timer1.initialize(1000000);//arbitrary period
   Timer1.stop();
-  stepperSetup(STEPPER_PIN_ARRAY, STEPPER_STEPS, STEPPER_RPM);
   //initiate LED
   for(int i = 0; i < 3; i++) {
     pinMode(LED_PIN_ARRAY[i],OUTPUT);
     analogWrite(LED_PIN_ARRAY[0],20);
   }
+
+  takeupReel.setSpeed(STEPPER_RPM);
   //initiate AnalogIn
   //initiate readout
 //  while(breakOut == false) {
@@ -195,20 +131,29 @@ void setup() {
   pinMode(PHOTOCELL_DIN, INPUT);
 }
 
+int photocellLast;
+
 void loop() {
   //nextStep = -1;
   switch(nextStep) {
     case 0://advance film
       if (millis() > nextStepTime) {
-        stepperRun();
-        //add sensor interrupt
-        attachInterrupt(digitalPinToInterrupt(PHOTOCELL_DIN),stepperStop,FALLING);
-        nextStep = -1;//holding pattern
-        nextStepTime = millis() + 6000;//wait a second for testing
+        nextStepTime = 0;
+        nextStep = 3;
+        photocellLast = digitalRead(PHOTOCELL_DIN);
+      }
+      break;
+    case 3:
+      if (photocellLast == HIGH && digitalRead(PHOTOCELL_DIN) == LOW) {
+        nextStep = 1;
+      } else {
+        Serial.println("elsed");
+        photocellLast = digitalRead(PHOTOCELL_DIN);
+        takeupReel.step(1);
       }
       break;
     case 1://capture
-      detachInterrupt(digitalPinToInterrupt(PHOTOCELL_DIN));
+      //detachInterrupt(digitalPinToInterrupt(PHOTOCELL_DIN));
       //actuate servo...set wait time;
       shutterServo.actuate(SERVO_ANGLE);
       nextStepTime = millis() + getServoTime();
@@ -227,8 +172,7 @@ void loop() {
       break;
     case -1:
       if (millis() > nextStepTime && false) {
-        detachInterrupt(digitalPinToInterrupt(PHOTOCELL_DIN));
-        stepperStop();
+        //detachInterrupt(digitalPinToInterrupt(PHOTOCELL_DIN));
         for (int i = 0; i < 3; i++) {
           analogWrite(LED_PIN_ARRAY[i], 255);
         }
