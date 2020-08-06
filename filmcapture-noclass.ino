@@ -1,10 +1,9 @@
-//Film Scanner V08.06.20
+//Film Scanner V08.06.20a
 //Author: Jim Harter
-//Purpose: Control movie-film digitizer.  A take-up reel is powered by a stepper motor and a servo serves to acuate
+//Purpose: Control movie-film digitizer.  A take-up reel is powered by a stepper motor and a servo serves to actuate
 //  the shutter of a digital camera pointed at a frame.  Frame placement is controlled by a photo-resistor sensing
 //  light from an LED through the films sprocket holes.  In this iteration, can capture 16mm, 8mm, and super film,
-//  while a sprocket counter function would allow for the proper advancement of 35mm film.  The Stepper and Servo
-//  driving functions utilize Timer1 and are non-blocking.  
+//  while a sprocket counter function would allow for the proper advancement of 35mm film.
 
 #include <Stepper.h>
 #include <Servo.h>
