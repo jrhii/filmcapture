@@ -1,4 +1,4 @@
-//Film Scanner V08.06.20a
+//Film Scanner V08.07.20
 //Author: Jim Harter
 //Purpose: Control movie-film digitizer.  A take-up reel is powered by a stepper motor and a servo serves to actuate
 //  the shutter of a digital camera pointed at a frame.  Frame placement is controlled by a photo-resistor sensing
@@ -7,7 +7,9 @@
 
 #include <Stepper.h>
 #include <Servo.h>
-bool isTimerOneOccupied = false;
+
+const unsigned int SHUTTER_SPEED = 1000/30;//probably needs some extra time for pre shutter
+const unsigned int MINIMUM_INTERVAL = 1000;
 
 const int LED_PIN_ARRAY[3] = {11,5,3};
 
@@ -22,11 +24,11 @@ const int SERVO_PIN = 9;
 const int SERVO_MIN_WIDTH = 900;
 const int SERVO_MAX_WIDTH = 2100;
 const int SERVO_SWEEP = 120;
-const unsigned int SHUTTER_SPEED = 1000/30;//probably needs some extra time for pre shutter
 const unsigned int SERVO_DEGREE_SPEED = 2; //time to swing one degree
 const int SERVO_ANGLE = 45;//angle of servo swing
 
 unsigned long nextStepTime = 0;//minimum time to next step
+unsigned long lastCaptureTime = 0;
 int nextStep = 0;//next step to execute in loop
 int photocellLast;//keep track of photocell to track falling
 int stepperBeginTime;//track how long stepper has run in one go
@@ -70,7 +72,7 @@ void loop() {
         stepperBeginTime = millis();
       }
       break;
-    case 1:
+    case 1://stepper loop
       if (millis() - stepperBeginTime > 10000) {
         nextStep = -1;//end of reel, hopefully
         break;
@@ -84,16 +86,16 @@ void loop() {
       break;
     case 2://capture
       //actuate servo...set wait time;
-      {
+      if (millis() > lastCaptureTime + MINIMUM_INTERVAL) {
         shutterServo.writeMicroseconds(getServoPulseWidth(SERVO_ANGLE));
         nextStepTime = millis() + getServoTime();
+        lastCaptureTime = millis();
         
         while(millis() < nextStepTime) {};//wait for servo to actuate;
        
         shutterServo.writeMicroseconds(SERVO_MIN_WIDTH);
         
-        unsigned long captureTime = (unsigned long)SHUTTER_SPEED;
-        nextStepTime = millis() + captureTime;
+        nextStepTime = millis() + SHUTTER_SPEED;
         
         nextStep = 0;
       }
