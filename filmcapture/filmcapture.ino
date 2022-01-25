@@ -5,14 +5,14 @@
 
 #include <SpeedyStepper.h>
 
-const int CAPTURE_RPM = 120;
+const long CAPTURE_RPM = 120;
 const int CAPTURE_SPEED = 1000 / 8;
 
 const int MOTOR_DIR_PIN = 0;
 const int MOTOR_STEP_PIN = 1;
 const int MOTOR_ENABLE_PIN = 14;
 
-const int STEPS_PER_REV = 3200; //200 * 16 microsteps
+const long STEPS_PER_REV = 3200; //200 * 16 microsteps
 
 const int IR_PIN = 18;
 
@@ -88,11 +88,13 @@ void loop()
     switch (stage)
     {
     case 0:
-        if (digitalRead(GO_PIN) == LOW)
+
+        if (digitalRead(GO_PIN) == 0)
         {
             digitalWrite(MOTOR_ENABLE_PIN, LOW);
             stage = 1;
         }
+        break;
     case 1:
         if (captureCount > 5000)
         {              //120ft of 16mm + some extra
