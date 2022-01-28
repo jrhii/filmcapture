@@ -6,7 +6,6 @@
 #include <SpeedyStepper.h>
 
 const long CAPTURE_RPM = 120;
-const int CAPTURE_SPEED = 1000 / 8;
 
 const int MOTOR_DIR_PIN = 0;
 const int MOTOR_STEP_PIN = 1;
@@ -14,46 +13,15 @@ const int MOTOR_ENABLE_PIN = 14;
 
 const long STEPS_PER_REV = 3200; //200 * 16 microsteps
 
-const int IR_PIN = 18;
+const int SHUTTER_PIN = 18;
 
 const int GO_PIN = 19;
 
-//uses an IR LED to trigger a nikon remote shutter
 void takePhoto(void)
 {
-    int i;
-    for (i = 0; i < 76; i++)
-    {
-        digitalWrite(IR_PIN, HIGH);
-        delayMicroseconds(7);
-        digitalWrite(IR_PIN, LOW);
-        delayMicroseconds(7);
-    }
-    delay(27);
-    delayMicroseconds(810);
-    for (i = 0; i < 16; i++)
-    {
-        digitalWrite(IR_PIN, HIGH);
-        delayMicroseconds(7);
-        digitalWrite(IR_PIN, LOW);
-        delayMicroseconds(7);
-    }
-    delayMicroseconds(1540);
-    for (i = 0; i < 16; i++)
-    {
-        digitalWrite(IR_PIN, HIGH);
-        delayMicroseconds(7);
-        digitalWrite(IR_PIN, LOW);
-        delayMicroseconds(7);
-    }
-    delayMicroseconds(3545);
-    for (i = 0; i < 16; i++)
-    {
-        digitalWrite(IR_PIN, HIGH);
-        delayMicroseconds(7);
-        digitalWrite(IR_PIN, LOW);
-        delayMicroseconds(7);
-    }
+    digitalWrite(SHUTTER_PIN, HIGH);
+    delay(100);
+    digitalWrite(SHUTTER_PIN, LOW);
 }
 
 float angleToSteps(float angle)
@@ -71,8 +39,8 @@ void setup()
     sprocket.setSpeedInStepsPerSecond(STEPS_PER_REV * CAPTURE_RPM / 60);
     sprocket.setAccelerationInStepsPerSecondPerSecond(32000);
 
-    pinMode(IR_PIN, OUTPUT);
-    digitalWrite(IR_PIN, LOW);
+    pinMode(SHUTTER_PIN, OUTPUT);
+    digitalWrite(SHUTTER_PIN, LOW);
 
     pinMode(GO_PIN, INPUT_PULLUP);
     delay(100); //establish stepper
@@ -113,7 +81,6 @@ void loop()
         if (sprocket.motionComplete())
         {
             takePhoto();
-            delay(200 + CAPTURE_SPEED);
             captureCount++;
             stage = 1;
         }
