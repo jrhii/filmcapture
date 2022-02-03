@@ -6,6 +6,7 @@
 #include <SpeedyStepper.h>
 
 const long CAPTURE_RPM = 120;
+const long SHUTTER_SPEED = 100;
 
 const int MOTOR_DIR_PIN = 0;
 const int MOTOR_STEP_PIN = 1;
@@ -20,7 +21,7 @@ const int GO_PIN = 19;
 void takePhoto(void)
 {
     digitalWrite(SHUTTER_PIN, HIGH);
-    delay(100);
+    delay(SHUTTER_SPEED + 200); //rolling shutter time of 50 + safter factor
     digitalWrite(SHUTTER_PIN, LOW);
 }
 
@@ -70,18 +71,16 @@ void loop()
             digitalWrite(MOTOR_ENABLE_PIN, HIGH);
             break;
         }
-        if (millis() > nextStepTime)
-        {
-            nextStepTime = millis() + (60000 / CAPTURE_RPM);
-            sprocket.moveRelativeInSteps(-400);
-            stage = 2;
-        }
+        sprocket.moveRelativeInSteps(-400);
+        stage = 2;
         break;
     case 2:
-        if (sprocket.motionComplete())
+        if (sprocket.motionComplete() && millis() > nextStepTime)
         {
             takePhoto();
             captureCount++;
+
+            nextStepTime = millis() + 350; //about 130% of the time XT-20 needs to write photo
             stage = 1;
         }
         break;
